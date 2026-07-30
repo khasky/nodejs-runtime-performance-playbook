@@ -1,5 +1,7 @@
 # Node.js Runtime & Performance Playbook
 
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE) [![Web Reactions](https://api.webreactions.app/badge/github/khasky/nodejs-runtime-performance-playbook.svg)](https://webreactions.app/?utm_source=github&utm_channel=repository&utm_medium=nodejs-runtime-performance-playbook)
+
 Practical guide for Node.js APIs and workers: event-loop health, streaming and backpressure, memory, diagnostics, and production performance habits.
 
 > *If I were running a serious Node.js API or worker today, what would I care about before I cared about micro-optimizing random lines of JavaScript?*
