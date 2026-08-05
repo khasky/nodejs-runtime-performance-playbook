@@ -131,6 +131,14 @@ These rules catch a surprising amount of pain:
 - synchronous startup checks leaking into request paths
 - one endpoint that allocates massive objects per request
 
+### The second queue nobody watches
+
+Not everything asynchronous runs on the event loop. Work that has no non-blocking OS primitive is handed to libuv's thread pool, and **that pool holds four threads by default** (`UV_THREADPOOL_SIZE`, raisable to 1024). Filesystem operations, `zlib`, `crypto`'s `pbkdf2`/`scrypt`, and `dns.lookup` all draw from those four slots. Four slow file reads and the fifth waits — with the event loop perfectly idle and every latency dashboard showing nothing wrong.
+
+`dns.lookup` is the trap in that list, because it does not look like disk work. It calls `getaddrinfo`, which is blocking, so it occupies a pool thread — and it is what `http.request` and most clients use by default when given a hostname. A slow resolver therefore starves file I/O. `dns.resolve` uses the network directly and does not touch the pool.
+
+Raise `UV_THREADPOOL_SIZE` when the workload is genuinely pool-bound, but measure first: the symptom is queued latency with a healthy event-loop delay, and that pairing is the whole diagnosis.
+
 ---
 
 ## Streams and backpressure
@@ -231,7 +239,8 @@ Most latency problems are IO-shaped, and threads make those worse, not better.
 - assuming "async" means "safe under unlimited concurrency";
 - doing whole-file transforms in RAM when streams fit better;
 - skipping diagnostics until the incident is already happening;
-- treating performance as a one-time benchmark instead of an operational property.
+- treating performance as a one-time benchmark instead of an operational property;
+- assuming outbound HTTP reuses connections. `http.globalAgent` and `https.globalAgent` set `keepAlive: true` only from Node 19 onward — before that every request paid a fresh TCP and TLS handshake. The trap that survives the upgrade: `new Agent()` still defaults to `keepAlive: false`, so a custom agent added for one option silently drops connection reuse for everything using it.
 
 ---
 
